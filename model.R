@@ -80,14 +80,13 @@ model_sim <- model_sim |>
       'NHgd', init = 0,  desc='Gov demand for new houses',
       'rg', init = 0.02,  desc='Rents of public houses',
       'phparam', init = 0.0005,  desc="House price elasticity to unsold houses",
-      'dsparam', init = 0.02,  desc="House supply elasticity to price",
       'phgparam', init = 1.01,  desc="Price of houses paid by government relative to commercial price",
       'Wparam', init = 0.9,  desc="Share of costs of houses production paid by government",
       'hsparam', init = 1.5,  desc="Price elasticity of supply of houses",
       'mparam', init = 0.1,  desc="Share of workers disposable income which could be spent on mortgages"
   )
 
-model_sim$variables
+#model_sim$variables
 
 model_sim <- model_sim |>
   add_equation(
@@ -152,22 +151,72 @@ model_sim <- model_sim |>
     #"H_s = H_h", desc = "Money equilibrium", hidden = TRUE
   )
 
-model_sim$equations
+#model_sim$equations
 
-model_sim <- model_sim |>
+model_sim_base <- model_sim |>
   simulate_scenario(
     periods = 100, start_date = "2015-01-01",
     method = "Gauss", max_iter = 350, tol = 1e-05
   )
 
 plot_simulation(
-  model_sim, scenario = "baseline",
+  model_sim_base, scenario = "baseline",
   from = "2015-01-01", to = "2023-01-01",
   expressions = c("Vc", "Vw")
 )
 
+
+model_sim1 <- model_sim |>  
+  change_init('G', 61.5) |> 
+  change_init('NHgd', 2.5 )
+  # change_init('alpha1', 0.8) |>
+  # change_init('alpha2', 0.2) |>
+  # change_init('chi', 0.1) |>
+  # change_init('lam20', 0.44196) |>
+  # change_init('lam22', 1.1)|>
+  # change_init('lam23', 1 )|>
+  # change_init('lam24', 0.03 )|>
+  # change_init('lam30', 0.3997 )|>
+  #  change_init('lam32', 1 )|>
+  #  change_init('lam33', 1.1 )|>
+  #  change_init('lam34', 0.03 )|>
+   # change_init('phparam', 0.0005 )|> 
+   # change_init('phgparam', 1.01 )|>
+   # change_init('Wparam', 0.9 )|>
+   # change_init('hsparam', 1.5 )|>
+   # change_init('mparam', 0.1 )|>
+   # change_init('Z', 0.1 )|>
+   # change_init('Trate', 0.05 )|>
+   # change_init('pBL', 50)|> #20
+   # change_init('rb', 0.03)|>
+   # change_init('rg', 0.02) |> 
+   # change_init('Vc', 40)|>
+   # change_init('Vw', 40)|>
+   # change_init('Hs', 6)|>
+   # change_init('Hc', 0.5)|>
+   # change_init('Hcd', 0.1)|>
+   # change_init('phc', 1)|>
+   # change_init('phg', 0.6)|>
+   # change_init('ph', 1)
+
+model_sim1 <- model_sim1 |>
+  simulate_scenario(
+    periods = 100, start_date = "2015-01-01",
+    method = "Gauss", max_iter = 350, tol = 1e-05
+  )
+
+plot_simulation(
+  model_sim1, scenario = "baseline",
+  from = "2015-01-01", to = "2023-01-01",
+  expressions = c("Vc", "Vw")
+)
+
+
 model_sens <- model_sim |>
   create_sensitivity(
-    variable = "alpha1", lower = 0.1, upper = 0.8, step = 0.1
+    variable = "hsparam", lower = 0.5, upper = 2, step = 0.2
   ) |>
   simulate_scenario(periods = 100, start_date = "2015-01-01")
+
+plot_simulation(model = model_sens, scenario = "sensitivity", take_all = TRUE,
+                from = "2015-01-01", to = "2023-01-01", expressions = c("ph"))
