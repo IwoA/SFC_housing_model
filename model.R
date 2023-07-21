@@ -43,7 +43,7 @@ model_sim <- model_sim |>
      'NHwh' , desc='New houses held by workers',
      'NHgh' , desc='New houses held by gov',
      'ph' , init = 1, desc='Price of house',
-     'phg' , init = 0.6, desc='Price of house paid by government',
+     'phg' , init = 0.8, desc='Price of house paid by government',
      'phc' , init = 1, desc='Price of house paid by non-government',
      'CGd' , desc='Capital gains on houses',
      'Hc' , init = 0.5, desc='Total number of houses held by capitalists',
@@ -76,11 +76,11 @@ model_sim <- model_sim |>
       'rd', init = 0,  desc='Rate of interest of deposits',
       'rb', init = 0.03,  desc='Rate of interest of mortgages',
       'pBL', init = 50,  desc='Price of bonds',
-      'Z', init = 0.1,  desc='Expectation about house prices',
+      #'Z', init = 0.1,  desc='Expectation about house prices',
       'NHgd', init = 0,  desc='Gov demand for new houses',
       'rg', init = 0.02,  desc='Rents of public houses',
       'phparam', init = 0.0005,  desc="House price elasticity to unsold houses",
-      'phgparam', init = 1.01,  desc="Price of houses paid by government relative to commercial price",
+      'phgparam', init = 0.8,  desc="Price of houses paid by government relative to commercial price",
       'Wparam', init = 0.9,  desc="Share of costs of houses production paid by government",
       'hsparam', init = 1.5,  desc="Price elasticity of supply of houses",
       'mparam', init = 0.1,  desc="Share of workers disposable income which could be spent on mortgages"
@@ -139,7 +139,7 @@ model_sim <- model_sim |>
      'NHgh = NHgd', 
      'phc=(phparam*(NHcd+NHwd)/(Hs-NHgd)*phc[-1]+phc[-1])',  
      'ph=((NHch+NHwh)/(Hs-Hu))*phc+(NHgh/(Hs-Hu))*phg', 
-     'phg=phgparam*phg[-1]',
+     'phg=phgparam*phc[-1]',
      'Hc = NHch+ Hc[-1]',
      'Hw =NHwh + Hw[-1]',
      'Hg = NHgh + Hg[-1]',
@@ -166,7 +166,7 @@ plot_simulation(
 )
 
 
-model_sim1 <- model_sim |>  
+model_sim_housing <- model_sim |>  
   change_init('G', 61.5) |> 
   change_init('NHgd', 2.5 )
   # change_init('alpha1', 0.8) |>
@@ -199,24 +199,44 @@ model_sim1 <- model_sim |>
    # change_init('phg', 0.6)|>
    # change_init('ph', 1)
 
-model_sim1 <- model_sim1 |>
+model_sim_housing <- model_sim_housing |>
   simulate_scenario(
     periods = 100, start_date = "2015-01-01",
     method = "Gauss", max_iter = 350, tol = 1e-05
   )
 
 plot_simulation(
-  model_sim1, scenario = "baseline",
+  model_sim_housing, scenario = "baseline",
+  from = "2015-01-01", to = "2023-01-01",
+  expressions = c("Vc", "Vw")
+)
+
+#dodanie do modelu bazowego wynikow z wersji housing
+model_sim_base$housing <- model_sim_housing$baseline
+
+# wykres baseline i housing
+plot_simulation(
+  model_sim_base, scenario = c("housing", "baseline"),
   from = "2015-01-01", to = "2023-01-01",
   expressions = c("Vc", "Vw")
 )
 
 
-model_sens <- model_sim |>
+
+model_sens <- model_sim_housing |>
   create_sensitivity(
-    variable = "hsparam", lower = 0.5, upper = 2, step = 0.2
-  ) |>
+    variable = "NHgd", lower = 0, upper = 5, step = 0.5) |>
   simulate_scenario(periods = 100, start_date = "2015-01-01")
 
+# ZASKAKUJACY WYNIK DLA NHwd = 4.5
 plot_simulation(model = model_sens, scenario = "sensitivity", take_all = TRUE,
                 from = "2015-01-01", to = "2023-01-01", expressions = c("ph"))
+
+plot_simulation(model = model_sens, scenario = "sensitivity", take_all = TRUE,
+                from = "2015-01-01", to = "2023-01-01", expressions = c("phc"))
+
+plot_simulation(model = model_sens, scenario = "sensitivity", take_all = TRUE,
+                from = "2015-01-01", to = "2023-01-01", expressions = c("NHd"))
+
+plot_simulation(model = model_sens, scenario = "sensitivity", take_all = TRUE,
+                from = "2015-01-01", to = "2023-01-01", expressions = c("NHwd"))
