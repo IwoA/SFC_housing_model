@@ -72,7 +72,7 @@ model_sim <- model_sim |>
       'lam32', init = 1,  desc='Portfolio parameter',
       'lam33', init = 1.1,  desc='Portfolio parameter',
       'lam34', init = 0.03,  desc='Portfolio parameter',
-      'chi', init = 0.1,  desc='Expectation about bonds price',
+      #'chi', init = 0.1,  desc='Expectation about bonds price',
       'rd', init = 0,  desc='Rate of interest of deposits',
       'rb', init = 0.03,  desc='Rate of interest of mortgages',
       'pBL', init = 50,  desc='Price of bonds',
@@ -81,7 +81,7 @@ model_sim <- model_sim |>
       'rg', init = 0.02,  desc='Rents of public houses',
       'phparam', init = 0.0005,  desc="House price elasticity to unsold houses",
       'phgparam', init = 0.8,  desc="Price of houses paid by government relative to commercial price",
-      'Wparam', init = 0.9,  desc="Share of costs of houses production paid by government",
+      'Wparam', init = 0.9,  desc="Share of costs of houses production (wages) in prices paid by government",
       'hsparam', init = 1.5,  desc="Price elasticity of supply of houses",
       'mparam', init = 0.1,  desc="Share of workers disposable income which could be spent on mortgages"
   )
@@ -155,7 +155,7 @@ model_sim <- model_sim |>
 
 model_sim_base <- model_sim |>
   simulate_scenario(
-    periods = 100, start_date = "2015-01-01",
+    periods = 50, start_date = "2015-01-01",
     method = "Gauss", max_iter = 350, tol = 1e-05
   )
 
@@ -225,7 +225,7 @@ plot_simulation(
 
 model_sens <- model_sim_housing |>
   create_sensitivity(
-    variable = "NHgd", lower = 0, upper = 5, step = 0.5) |>
+    variable = "NHgd", lower = 0, upper = 4.5, step = 0.5) |>
   simulate_scenario(periods = 100, start_date = "2015-01-01")
 
 # ZASKAKUJACY WYNIK DLA NHwd = 4.5
@@ -240,3 +240,43 @@ plot_simulation(model = model_sens, scenario = "sensitivity", take_all = TRUE,
 
 plot_simulation(model = model_sens, scenario = "sensitivity", take_all = TRUE,
                 from = "2015-01-01", to = "2023-01-01", expressions = c("NHwd"))
+
+model_sens <- model_sim_housing |>
+  create_sensitivity(
+    variable = "NHgd", lower = 0, upper = 5.5, step = 0.5) |>
+  simulate_scenario(periods = 50, start_date = "2015-01-01")
+
+# Sensivity wielu parametrów
+
+# lista parametrów
+params <- list(
+  'G' =  data.frame('nazwa' = 'G', 'init'=60, 'od' = 50, 'do' = 120, 'step' = 10),
+  'Trate' =  data.frame('nazwa' = 'Trate', 'init'=0.05, 'od' = 0.04, 'do' = 0.16, 'step' = 0.02), 
+  'rd' =  data.frame('nazwa' = 'rd', 'init'=0, 'od' = 0, 'do' = 0.1, 'step' = 0.02),
+  'rb' =  data.frame('nazwa' = 'rb', 'init'=0.03, 'od' = 0.03, 'do' = 0.12, 'step' = 0.03),
+  'pBL' =  data.frame('nazwa' = 'pBL', 'init'=50, 'od' = 10, 'do' = 50, 'step' = 10),   #'rBL=1/pBL'
+  'NHgd' =  data.frame('nazwa' = 'NHgd', 'init'=0, 'od' = 0, 'do' = 4.5, 'step' = 0.5),
+  'rg' =  data.frame('nazwa' = 'rg', 'init'=0.02, 'od' = 0.01, 'do' = 0.1, 'step' = 0.02),   #rentg = Hg[-1]*rg[-1]*phg[-1]
+  'phparam' =  data.frame('nazwa' = 'phparam', 'init'=0.0005, 'od' = 0.0002, 'do' = 0.001, 'step' = 0.0002),
+  'phgparam' =  data.frame('nazwa' = 'phgparam', 'init'=0.8, 'od' = 0.5, 'do' = 0.9, 'step' = 0.1),
+  'hsparam' =  data.frame('nazwa' = 'hsparam', 'init'=1.5, 'od' = 0.5, 'do' = 1.5, 'step' = 0.2),
+  'mparam' =  data.frame('nazwa' = 'mparam', 'init'=0.1, 'od' = 0.01, 'do' = 0.2, 'step' = 0.05)
+)
+
+
+sensivity <- function(model, x, co){
+  # funkcja tworzy listę wykresów
+  # x = tabela z danymi do funkcji create_sensivity
+  # c = zmienna, która ma być na wykresie
+  
+  model_sens <- 
+    create_sensitivity(model,
+                        variable = x$nazwa, lower = x$od, upper = x$do, step = x$step) |>
+    simulate_scenario(periods = 50, start_date = "2015-01-01") 
+  plot_simulation(model = model_sens, scenario = "sensitivity", take_all = TRUE,
+                  from = "2015-01-01", to = "2023-01-01", expressions = c(co))
+}
+
+wynik <- purrr::map(params, \(x) sensivity(model_sim_housing ,x, co =c('Vc', 'Vw')))
+plotly::subplot(wynik, nrows = 3) # rysuje wszystkie wyniki na jednym wykresie
+
