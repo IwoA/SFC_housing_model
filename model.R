@@ -127,7 +127,7 @@ model_sim <- model_sim |>
      'YDcer=YDcr[-1]',
      'YDwer=YDwr[-1]',
     
-     'Hs= Hs[-1]*(1+ hsparam*d(ph)/ph[-1])',
+     'Hs= max(Hs[-1]*(1+ hsparam*d(ph)/ph[-1]),0.0001)', #supply can't be neither negative nor zero
      # Demand for houses
      'NHd = NHwd+NHcd+NHgd',
      'NHcd=Hcd-Hc[-1]',
@@ -137,15 +137,15 @@ model_sim <- model_sim |>
      'NHwh=min((Hs-NHgh)*(NHwd/(NHcd+NHwd)),NHwd)', 
      'Md=NHwh*phc',
      'NHgh = NHgd', 
-     'phc=(phparam*(NHcd+NHwd)/(Hs-NHgd)*phc[-1]+phc[-1])',  
-     'ph=((NHch+NHwh)/(Hs-Hu))*phc+(NHgh/(Hs-Hu))*phg', 
+     'phc=(phparam*(NHcd+NHwd)/(Hs-NHgd)*phc[-1]+phc[-1])',  # what if Hs= NHgd?
+     'ph=max(((NHch+NHwh)/(Hs-Hu))*phc+(NHgh/(Hs-Hu))*phg, 0.1)', 
      'phg=phgparam*phc[-1]',
      'Hc = NHch+ Hc[-1]',
      'Hw =NHwh + Hw[-1]',
      'Hg = NHgh + Hg[-1]',
      'CGd=d(ph)*Hc[-1]',  
      'Hh=NHgh+NHch+NHwh',
-     'Hu=Hs-NHgh-NHch-NHwh',
+     'Hu=Hs-NHgh-NHch-NHwh', # can be negative because it's role it to show pressure on prices
      'ERrd=(rentc[-1]+CGd[-1])/(ph[-1]*Hc[-1])', 
      'rh = rb'
     #"H_s = H_h", desc = "Money equilibrium", hidden = TRUE
@@ -201,7 +201,7 @@ model_sim_housing <- model_sim |>
 
 model_sim_housing <- model_sim_housing |>
   simulate_scenario(
-    periods = 100, start_date = "2015-01-01",
+    periods = 50, start_date = "2015-01-01",
     method = "Gauss", max_iter = 350, tol = 1e-05
   )
 
@@ -218,7 +218,7 @@ model_sim_base$housing <- model_sim_housing$baseline
 plot_simulation(
   model_sim_base, scenario = c("housing", "baseline"),
   from = "2015-01-01", to = "2023-01-01",
-  expressions = c("Vc", "Vw")
+  expressions = c("Hs", "NHgd")
 )
 
 
@@ -258,7 +258,7 @@ params <- list(
   'NHgd' =  data.frame('nazwa' = 'NHgd', 'init'=0, 'od' = 0, 'do' = 4.5, 'step' = 0.5),
   'rg' =  data.frame('nazwa' = 'rg', 'init'=0.02, 'od' = 0.01, 'do' = 0.1, 'step' = 0.02),   #rentg = Hg[-1]*rg[-1]*phg[-1]
   'phparam' =  data.frame('nazwa' = 'phparam', 'init'=0.0005, 'od' = 0.0002, 'do' = 0.001, 'step' = 0.0002),
-  'phgparam' =  data.frame('nazwa' = 'phgparam', 'init'=0.8, 'od' = 0.5, 'do' = 0.9, 'step' = 0.1),
+  'phgparam' =  data.frame('nazwa' = 'phgparam', 'init'=0.8, 'od' = 0.6, 'do' = 0.9, 'step' = 0.1),
   'hsparam' =  data.frame('nazwa' = 'hsparam', 'init'=1.5, 'od' = 0.5, 'do' = 1.5, 'step' = 0.2),
   'mparam' =  data.frame('nazwa' = 'mparam', 'init'=0.1, 'od' = 0.01, 'do' = 0.2, 'step' = 0.05)
 )
@@ -277,6 +277,6 @@ sensivity <- function(model, x, co){
                   from = "2015-01-01", to = "2023-01-01", expressions = c(co))
 }
 
-wynik <- purrr::map(params, \(x) sensivity(model_sim_housing ,x, co =c('Vc', 'Vw')))
-plotly::subplot(wynik, nrows = 3) # rysuje wszystkie wyniki na jednym wykresie
+wynik <- purrr::map(params, \(x) sensivity(model_sim_housing ,x, co =c('phc')))
+plotly::subplot(wynik, nrows = 3) |> plotly::layout(showlegend = FALSE) # rysuje wszystkie wyniki na jednym wykresie
 
